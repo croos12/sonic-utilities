@@ -31,7 +31,6 @@ class PackageEntry:
         built_in: Boolean flag whether the package is built in.
         image_id: Image ID for this package or None if package
                   is not installed.
-        tag: Tag for this package or None if package is not installed.
     """
 
     name: str
@@ -42,7 +41,6 @@ class PackageEntry:
     installed: bool = False
     built_in: bool = False
     image_id: Optional[str] = None
-    tag: Optional[str] = None
 
 
 def package_from_dict(name: str, package_info: Dict) -> PackageEntry:
@@ -57,10 +55,10 @@ def package_from_dict(name: str, package_info: Dict) -> PackageEntry:
     installed = package_info.get('installed', False)
     built_in = package_info.get('built-in', False)
     image_id = package_info.get('image-id')
-    tag = package_info.get('tag')
+
     return PackageEntry(name, repository, description,
                         default_reference, version, installed,
-                        built_in, image_id, tag)
+                        built_in, image_id)
 
 
 def package_to_dict(package: PackageEntry) -> Dict:
@@ -74,7 +72,6 @@ def package_to_dict(package: PackageEntry) -> Dict:
         'installed': package.installed,
         'built-in': package.built_in,
         'image-id': package.image_id,
-        'tag': package.tag,
     }
 
 
