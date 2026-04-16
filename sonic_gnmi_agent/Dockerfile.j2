@@ -1,0 +1,49 @@
+{% from "dockers/dockerfile-macros.j2" import install_debian_packages, copy_files, rsync_from_builder_stage %}
+ARG BASE=docker-sonic-gnmi-{{DOCKER_USERNAME}}:{{DOCKER_USERTAG}}
+
+FROM $BASE AS base
+
+ARG docker_container_name
+ARG image_version
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+ENV IMAGE_VERSION=$image_version
+
+RUN apt-get update
+
+{% if sonic_gnmi_agent_debs.strip() -%}
+{{ copy_files("debs/", sonic_gnmi_agent_debs.split(' '), "/debs/") }}
+
+{{ install_debian_packages(sonic_gnmi_agent_debs.split(' ')) }}
+{%- endif %}
+
+RUN apt-get install -y python3-protobuf
+
+RUN apt-get clean -y      && \
+    apt-get autoclean -y   && \
+    apt-get autoremove -y && \
+    rm -rf /debs
+
+RUN mkdir -p /usr/lib/python3/dist-packages/gnmi_agent
+RUN mkdir -p /sonic/templates
+
+RUN groupadd -r gnmi_agent_group && useradd -r -g gnmi_agent_group gnmi_agent_user
+
+RUN chown -R gnmi_agent_user:gnmi_agent_group /sonic/templates
+RUN chown -R gnmi_agent_user:gnmi_agent_group /usr/lib/python3/dist-packages/gnmi_agent
+COPY ["src/__init__.py", "src/proto_utils.py", "src/go_gnmi_utils.py", "/usr/lib/python3/dist-packages/gnmi_agent/"]
+COPY ["src/gnmi_client.py", "/usr/sbin/"]
+COPY ["templates/", "/sonic/templates/"]
+RUN chmod a+x /usr/sbin/gnmi_client.py
+RUN rm -f /etc/supervisor/conf.d/supervisord.conf
+
+FROM $BASE
+
+{{ rsync_from_builder_stage() }}
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV IMAGE_VERSION=$image_version
+
+USER gnmi_agent_user
+ENTRYPOINT ["/bin/bash"]
